@@ -53,7 +53,6 @@ A continuación, se muestran ejemplos de cómo interactuar con los endpoints uti
 
    ```bash
    curl -X POST http://<tu-servidor>/download-backup -H "Content-Type: application/json" -d '{"email": "tu_email", "password": "tu_password"}'
-'
 
 3. Hacer un nuevo backup:
 
