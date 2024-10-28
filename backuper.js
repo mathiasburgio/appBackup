@@ -77,8 +77,7 @@ async function makeBackup(){
         await backupDatabase(backupPath);
         await encryptZip(backupPath, encryptedZipPath);
 
-        removeOlds();
-        
+        //removeOlds();
         return {error: false, encryptedZipPath: encryptedZipPath};
     }catch(err){
         return {error: true, message: err};
