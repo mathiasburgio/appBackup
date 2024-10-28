@@ -45,7 +45,7 @@ app.post("/get-last-backup", limiter, (req, res)=>{
     }
 })
 
-//ejecuta el downloader y guarda el ultimo backup en su carpeta ./downloads
+//ejecuta el downloader (de backups) y guarda el ultimo backup en su carpeta ./downloads
 app.post("/download-backup", limiter, async (req, res)=>{
     const { email, password } = req.body;
     if (email === process.env.AUTH_EMAIL && password === process.env.AUTH_PASSWORD) {
@@ -55,6 +55,17 @@ app.post("/download-backup", limiter, async (req, res)=>{
         res.status(200).send("ERROR");
     }
 })
+
+//ejecuta el downloader (de file) y descarga los archivos no sincronizados en ./downloads/{folder}
+app.post("/download-files", limiter, async (req, res)=>{
+    const { email, password } = req.body;
+    if (email === process.env.AUTH_EMAIL && password === process.env.AUTH_PASSWORD) {
+        await downloader.downloadFiles();
+        res.send("OK");
+    }else{
+        res.status(200).send("ERROR");
+    }
+});
 
 //genera un backup
 app.post("/make-backup", limiter, async (req, res)=>{
@@ -71,6 +82,23 @@ app.post("/make-backup", limiter, async (req, res)=>{
     }
 })
 
+app.post("/check-data", limiter, async(req, res)=>{
+    const { email, password } = req.body;
+    if (email === process.env.AUTH_EMAIL && password === process.env.AUTH_PASSWORD) {
+        res.status(200).json({
+            files: downloader.getFilesLength(),
+            lastFiles: downloader.getLastFilesDateTime(),
+            lastBackup: downloader.getLastBackupDateTime()
+        });
+    }else{
+        res.status(200).json({message: "error login"})
+    }
+})
+
+app.get("/", (req, res)=>{
+    res.sendFile( path.join(__dirname, "index.html") )
+})
+
 if(process.env.BACKUP_MODE == "backup" || process.env.BACKUP_MODE == "both"){
     cron.schedule('0 */6 * * *', () => {
         console.log('Generando backup...');
@@ -82,11 +110,16 @@ if(process.env.BACKUP_MODE == "download" || process.env.BACKUP_MODE == "both"){
     cron.schedule('0 */6 * * *', () => {
         console.log('Descargando backup...');
         downloader.downloadBackup();
+        console.log('Descargando archivos...');
+        downloader.downloadFiles();
     });
 }
 
 if(fs.existsSync("./backups") == false) fs.mkdirSync("./backups");
 if(fs.existsSync("./downloads") == false) fs.mkdirSync("./downloads");
+if(fs.existsSync("./downloads/backups") == false) fs.mkdirSync("./downloads/backups");
+if(fs.existsSync("./downloads/files") == false) fs.mkdirSync("./downloads/files");
+if(fs.existsSync("./downloads/log.txt") == false) fs.writeFileSync("./downloads/log.txt", "CREATED\n");
 
 app.listen(Number(process.env.PORT), ()=>{
     console.log("Escuchando en http://localhost:" + process.env.PORT)
