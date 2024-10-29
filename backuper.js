@@ -4,22 +4,21 @@ const { add } = require('node-7z');
 const fs = require('fs');
 const path = require('path');
 const fechas = require("./fechas");
+const logger = require("./logger");
 
 // Función para hacer un respaldo de la base de datos MongoDB
-function backupDatabase(backupPath) {
+function backupDatabase(db, backupPath) {
     return new Promise((resolve, reject) => {
         const fullpath = `"C:\\Program Files\\MongoDB\\tools\\mongodump.exe"`;
         const exeName = "mongodump";
 
         //aqui puedo usar fullpath o exeName
-        const dumpCommand = `${fullpath} --db ${process.env.PATH_DATABASE} --gzip --archive=${backupPath}`;
-        console.log(dumpCommand);
+        const dumpCommand = `${fullpath} --db ${db} --gzip --archive=${backupPath}`;
+        //console.log(dumpCommand);
         exec(dumpCommand, (error, stdout, stderr) => {
             if (error) {
-                console.error(`Error al hacer el backup: ${error.message}`);
                 return reject(error);
             }
-            console.log('Backup creado exitosamente');
             resolve();
         });
     });
@@ -30,20 +29,19 @@ function encryptZip(zipPath, encryptedZipPath) {
     return new Promise((resolve, reject) => {
         const encryptStream = add(encryptedZipPath, zipPath, { password: process.env.ENCRYPT_PASSWORD });
         encryptStream.on('progress', (progress) => {
-            console.log(`Progreso: ${progress.percent}%`);
+            //console.log(`Progreso: ${progress.percent}%`);
         });
 
-        encryptStream.on('data', (file) => {
-            console.log(`Archivo procesado: ${file}`);
+        encryptStream.on('data', (data) => {
+            //console.log(`Archivo procesado: ${data.file}`);
         });
 
         encryptStream.on('end', () => {
-            console.log(`Archivo cifrado creado exitosamente en: ${encryptedZipPath}`);
+            //console.log(`Archivo cifrado creado exitosamente en: ${encryptedZipPath}`);
             resolve();
         });
 
         encryptStream.on('error', (err) => {
-            console.error(`Error durante el cifrado: ${err.message}`);
             reject(err);
         });
     });
@@ -68,27 +66,26 @@ function removeOlds(){
     }
 }
 
-async function makeBackup(){
+async function makeBackup(database=null){
     try{
 
-        const fileName = `${process.env.PATH_DATABASE}_${(new Date().getTime())}.zip`;
+        const fileName = `backup_${(new Date().getTime())}_${database}.zip`;
         const backupPath = path.join(__dirname, "backups", fileName);
         const encryptedZipPath = backupPath.replace("zip", "7z");
-        await backupDatabase(backupPath);
+        await backupDatabase(database, backupPath);
         await encryptZip(backupPath, encryptedZipPath);
 
-        //removeOlds();
-        return {error: false, encryptedZipPath: encryptedZipPath};
+        fs.rmSync(backupPath);//borra el .zip
+        return encryptedZipPath;
     }catch(err){
-        return {error: true, message: err};
+        throw err;
     }
 }
 
-function getLastBackup(){
+function getLastBackup(database=null){
     let files = fs.readdirSync("./backups");
-    let file = files.sort().reverse().find(f=>f.endsWith("7z"));
+    let file = files.sort().reverse().find(f=>f.endsWith(database ? database + ".7z" : ".7z"));
     if(!file) return null;
-
     let fullpath = path.join(__dirname, "backups", file);
     return fullpath;
 }
