@@ -16,15 +16,15 @@ function writeLog2(key, value){
 }
 
 function getLog(lines = 100){
-    let content = fs.readFileSync(log2, "utf-8");
+    let content = fs.readFileSync(log, "utf-8");
     let aux = content.split("\n");
     aux.reverse();
-    aux.length = 100;
-    return aux.reverse().join("\n");
+    if(aux.length > lines) aux.length = lines;
+    return aux.reverse();
 }
-function getLog2(asJson = false){
+function getLog2(){
     let content = fs.readFileSync(log2, "utf-8");
-    return asJson ? JSON.parse(content) : content;
+    return content;
 }
 
 
