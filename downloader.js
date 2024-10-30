@@ -52,6 +52,9 @@ async function downloadFiles(folder, remoteUrl){
     
     //console.log(data);
 
+    //limito los archivos a descargar
+    if(data.files.length > Number(process.env.FILES_TO_DOWNLOAD_PER_CALL)) data.files.length = Number(process.env.FILES_TO_DOWNLOAD_PER_CALL);
+    
     try{
         for(let file of data.files){
             const response = await fetch(remoteUrl + file.relativePath);

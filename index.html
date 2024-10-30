@@ -44,10 +44,10 @@
     <script>
         window.onload = () => {
             $("#log").click(ev=>{
-                getLog("log1.txt");
+                getLog("log1");
             })
             $("#log2").click(ev=>{
-                getLog("log2.txt");
+                getLog("log2");
             })
         }
         async function getLog(cual = null){
@@ -63,20 +63,11 @@
                     url: "/get-log",
                     data
                 });
+                $("#response").JSONView(resp);
             }catch(err){
                 resp = err;
+                $("#response").html(`ERROR: ${resp.statusText}`);
             }
-            console.log(resp)
-            console.log(typeof resp);
-
-            $("#response").JSONView(resp);
-            /* const jsonViewer = new JSONViewer();
-            new JsonViewer({
-                container: document.querySelector("#response"), 
-                data: resp, 
-                theme: 'dark', 
-                expand: true
-            }); */
         }
     </script>
 </body>

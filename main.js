@@ -35,7 +35,7 @@ app.post("/get-last-backup", limiter, (req, res)=>{
     try{
         const { email, password, database } = req.body;
         if (email === process.env.AUTH_EMAIL && password === process.env.AUTH_PASSWORD){
-            logger.writeLog(`/get-last-backup => (${database || "-"})`);
+            logger.writeLog1(`/get-last-backup => (${database || "-"})`);
             let pathLastBackup = backuper.getLastBackup(database);
             if(pathLastBackup){
                 res.setHeader("Content-Disposition", 'attachment; filename="backup.7z"');
@@ -47,7 +47,7 @@ app.post("/get-last-backup", limiter, (req, res)=>{
             res.status(200).end();
         }
     }catch(err){
-        logger.writeLog(`/get-last-backup => ERROR => ${err.toString()}`);
+        logger.writeLog1(`/get-last-backup => ERROR => ${err.toString()}`);
         res.status(200).send("ERROR");
     }
 })
@@ -57,12 +57,12 @@ app.post("/download-backup", limiter, async (req, res)=>{
     try{
         const { email, password, database } = req.body;
         if (email === process.env.AUTH_EMAIL && password === process.env.AUTH_PASSWORD) {
-            logger.writeLog(`/download-backup => (${database || "-"})`);
+            logger.writeLog1(`/download-backup => (${database || "-"})`);
             let databases = process.env.PATH_DATABASE.split(";")
             for(let db of databases){
                 if(!database || database == db){
                     await downloader.downloadBackup(db);
-                    logger.writeLog(`downloader.downloadBackup (${db}) => OK`);
+                    logger.writeLog1(`downloader.downloadBackup (${db}) => OK`);
                     logger.writeLog2(`downloader.downloadBackup.${db}`, fechas.getNow(true));
                 }
             }
@@ -71,7 +71,7 @@ app.post("/download-backup", limiter, async (req, res)=>{
             res.status(200).end()
         }
     }catch(err){
-        logger.writeLog(`/download-backup => ERROR ${err.toString()}`);
+        logger.writeLog1(`/download-backup => ERROR ${err.toString()}`);
         res.status(200).send("ERROR");
     }
 })
@@ -81,13 +81,13 @@ app.post("/download-files", limiter, async (req, res)=>{
     try{
         const { email, password } = req.body;
         if (email === process.env.AUTH_EMAIL && password === process.env.AUTH_PASSWORD) {
-            logger.writeLog(`/download-files`);
+            logger.writeLog1(`/download-files`);
             let par = process.env.FILES_TO_DOWNLOAD.split(";");
             for(let routine of par){
                 let folder = routine.split(" from ")[0].trim();
                 let remoteUrl = routine.split(" from ")[1].trim();
                 let count = await downloader.downloadFiles(folder, remoteUrl);
-                logger.writeLog(`downloader.downloadFiles (${folder}) (count ${count}) => OK`);
+                logger.writeLog1(`downloader.downloadFiles (${folder}) (count ${count}) => OK`);
                 logger.writeLog2(`downloader.downloadFiles.${folder}`, fechas.getNow(true));
                 logger.writeLog2(`downloader.downloadFiles.${folder}.`, downloader.getFilesLength(folder));
             }
@@ -96,7 +96,7 @@ app.post("/download-files", limiter, async (req, res)=>{
             res.status(200).end();
         }
     }catch(err){
-        logger.writeLog(`/download-files => ERROR ${err.toString()}`);
+        logger.writeLog1(`/download-files => ERROR ${err.toString()}`);
         res.status(200).send("ERROR");
     }
 });
@@ -106,12 +106,12 @@ app.post("/make-backup", limiter, async (req, res)=>{
     try{
         const { email, password, database } = req.body;
         if (email === process.env.AUTH_EMAIL && password === process.env.AUTH_PASSWORD) {
-            logger.writeLog(`/make-backup => (${database || "-"})`);
+            logger.writeLog1(`/make-backup => (${database || "-"})`);
             let databases = process.env.PATH_DATABASE.split(";")
             for(let db of databases){
                 if(!database || database == db){
                     await backuper.makeBackup(db);
-                    logger.writeLog(`backuper.makeBackup (${db}) => OK`);
+                    logger.writeLog1(`backuper.makeBackup (${db}) => OK`);
                     logger.writeLog2(`backuper.makeBackup.${db}`, fechas.getNow(true));
                 }
             }
@@ -120,7 +120,7 @@ app.post("/make-backup", limiter, async (req, res)=>{
             res.status(200).end();
         }
     }catch(err){
-        logger.writeLog(`/make-backup => ERROR ${err.toString()}`);
+        logger.writeLog1(`/make-backup => ERROR ${err.toString()}`);
         res.status(200).send("ERROR");
     }
 })
@@ -128,7 +128,13 @@ app.post("/make-backup", limiter, async (req, res)=>{
 app.post("/get-log", limiter, async(req, res)=>{
     const { email, password, log } = req.body;
     if (email === process.env.AUTH_EMAIL && password === process.env.AUTH_PASSWORD) {
-        res.status(200).send(log == "log2.txt" ? logger.getLog2() : logger.getLog());
+        if(log == "log1"){
+            res.status(200).send(logger.getLog1());
+        }else if(log == "log2"){
+            res.status(200).send(logger.getLog2());
+        }else{
+            res.status(200).send("{}");//nada
+        }
     }else{
         res.status(200).json({message: "error login"})
     }
@@ -141,21 +147,54 @@ app.get("/", (req, res)=>{
 if(process.env.BACKUP_MODE == "backup" || process.env.BACKUP_MODE == "both"){
     let min = 0;//itera para ir haciendo el backup de cada BD cada 10 minutos
     process.env.PATH_DATABASE.split(";").forEach(db=>{
-        cron.schedule(`${min} 4 * * *`, () => {
-            logger.writeLog(`auto backup => ${db}`);
-            backuper.makeBackup(db);
+        cron.schedule(`${min} 4 * * *`, async () => {
+            try{
+                logger.writeLog1(`auto backup => ${db}`);
+                await backuper.makeBackup(db);
+                logger.writeLog1(`backuper.makeBackup (${db}) => OK`);
+                logger.writeLog2(`backuper.makeBackup.${db}`, fechas.getNow(true));
+            }catch(err){
+                logger.writeLog1(`backuper.makeBackup (${db}) => ERROR => ${err.toString()}`);
+            }
         });
-        min + 10;
+        min += 10;
     })
 }
 
 if(process.env.BACKUP_MODE == "download" || process.env.BACKUP_MODE == "both"){
-    let min = 0;//itera para ir haciendo el backup de cada BD cada 10 minutos
+    let minDb = 0;//itera para ir haciendo el backup de cada BD cada 10 minutos
     process.env.PATH_DATABASE.split(";").forEach(db=>{
-        cron.schedule(`${min} 5 * * *`, () => {
-            logger.writeLog(`auto download => ${db}`);
-            downloader.downloadBackup(db);
+        cron.schedule(`${min} 5 * * *`, async () => {
+            try{
+                logger.writeLog1(`auto download => ${db}`);
+                await downloader.downloadBackup(db);
+                logger.writeLog1(`downloader.downloadBackup (${db}) => OK`);
+                logger.writeLog2(`downloader.downloadBackup.${db}`, fechas.getNow(true));
+            }catch(err){
+                logger.writeLog1(`downloader.downloadBackup (${db}) => ERROR => ${err.toString()}`);
+            }
         });
+        minDb += 10;
+    });
+
+    let minFiles = 0;//itera para ir haciendo el backup de cada BD cada 10 minutos
+    process.env.FILES_TO_DOWNLOAD.split(";").forEach(folderRemoteUrl=>{
+
+        let folder = folderRemoteUrl.split(" from ")[0].trim();
+        let remoteUrl = folderRemoteUrl.split(" from ")[1].trim();
+        
+        cron.schedule(`${min} 6 * * *`, async () => {
+            try{
+                logger.writeLog1(`auto download files => ${folder}`);
+                let count = await downloader.downloadFiles(folder, remoteUrl);
+                logger.writeLog1(`downloader.downloadFiles (${folder}) (count ${count}) => OK`);
+                logger.writeLog2(`downloader.downloadFiles.${folder}`, fechas.getNow(true));
+                logger.writeLog2(`downloader.downloadFiles.${folder}.`, downloader.getFilesLength(folder));
+            }catch(err){
+                logger.writeLog1(`downloader.downloadFiles (${folder}) => ERROR => ${err.toString()}`);
+            }
+        });
+        minFiles += 10;
     });
 }
 
@@ -163,7 +202,7 @@ if(fs.existsSync("./backups") == false) fs.mkdirSync("./backups");
 if(fs.existsSync("./downloads") == false) fs.mkdirSync("./downloads");
 if(fs.existsSync("./downloads/backups") == false) fs.mkdirSync("./downloads/backups");
 if(fs.existsSync("./downloads/files") == false) fs.mkdirSync("./downloads/files");
-if(fs.existsSync("./log.txt") == false) fs.writeFileSync("./log.txt", "CREATED\n");
+if(fs.existsSync("./log1.txt") == false) fs.writeFileSync("./log1.txt", "CREATED\n");
 if(fs.existsSync("./log2.txt") == false) fs.writeFileSync("./log2.txt", "{}");
 
 app.listen(Number(process.env.PORT), ()=>{
