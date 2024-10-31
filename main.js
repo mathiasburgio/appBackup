@@ -147,7 +147,7 @@ app.get("/", (req, res)=>{
 if(process.env.BACKUP_MODE == "backup" || process.env.BACKUP_MODE == "both"){
     let min = 0;//itera para ir haciendo el backup de cada BD cada 10 minutos
     process.env.PATH_DATABASE.split(";").forEach(db=>{
-        cron.schedule(`${min} 4 * * *`, async () => {
+        cron.schedule(`${min} ${process.env.BACKUP_START_TIME} * * *`, async () => {
             try{
                 logger.writeLog1(`auto backup => ${db}`);
                 await backuper.makeBackup(db);
@@ -164,7 +164,7 @@ if(process.env.BACKUP_MODE == "backup" || process.env.BACKUP_MODE == "both"){
 if(process.env.BACKUP_MODE == "download" || process.env.BACKUP_MODE == "both"){
     let minDb = 0;//itera para ir haciendo el backup de cada BD cada 10 minutos
     process.env.PATH_DATABASE.split(";").forEach(db=>{
-        cron.schedule(`${min} 5 * * *`, async () => {
+        cron.schedule(`${minDb} ${process.env.DOWNLOAD_START_TIME} * * *`, async () => {
             try{
                 logger.writeLog1(`auto download => ${db}`);
                 await downloader.downloadBackup(db);
@@ -183,7 +183,7 @@ if(process.env.BACKUP_MODE == "download" || process.env.BACKUP_MODE == "both"){
         let folder = folderRemoteUrl.split(" from ")[0].trim();
         let remoteUrl = folderRemoteUrl.split(" from ")[1].trim();
         
-        cron.schedule(`${min} 6 * * *`, async () => {
+        cron.schedule(`${minFiles} ${process.env.DOWNLOAD_START_TIME + 1} * * *`, async () => {
             try{
                 logger.writeLog1(`auto download files => ${folder}`);
                 let count = await downloader.downloadFiles(folder, remoteUrl);
