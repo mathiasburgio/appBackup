@@ -9,11 +9,11 @@ const logger = require("./logger");
 // Función para hacer un respaldo de la base de datos MongoDB
 function backupDatabase(db, backupPath) {
     return new Promise((resolve, reject) => {
-        const fullpath = `"C:\\Program Files\\MongoDB\\tools\\mongodump.exe"`;
-        const exeName = "mongodump";
+        const os = process.platform;
+        const mongoDumpPath = (os == "win32" ? `"C:\\Program Files\\MongoDB\\tools\\mongodump.exe"` : "mongodump");
 
         //aqui puedo usar fullpath o exeName
-        const dumpCommand = `${fullpath} --db ${db} --gzip --archive=${backupPath}`;
+        const dumpCommand = `${mongoDumpPath} --db ${db} --gzip --archive=${backupPath}`;
         //console.log(dumpCommand);
         exec(dumpCommand, (error, stdout, stderr) => {
             if (error) {
